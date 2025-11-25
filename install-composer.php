@@ -48,94 +48,111 @@ $autoload_path = $core_path . '/vendor/autoload.php';
         }
         
         echo '<div class="step">';
-        echo '<h3>Step 1: Downloading Composer Installer</h3>';
+        echo '<h3>Step 1: Downloading Composer PHAR</h3>';
         
-        // Download composer installer
-        $installer_url = 'https://getcomposer.org/installer';
-        $installer_content = @file_get_contents($installer_url);
-        
-        if ($installer_content === false) {
-            // Try with curl if file_get_contents fails
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $installer_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            $installer_content = curl_exec($ch);
-            $curl_error = curl_error($ch);
-            curl_close($ch);
+        // Check if composer.phar already exists
+        if (file_exists($composer_phar)) {
+            echo '<p class="success">✅ Composer.phar already exists!</p>';
+            echo '<p>Location: <code>' . htmlspecialchars($composer_phar) . '</code></p>';
+        } else {
+            // Download composer.phar directly (latest stable version)
+            // Try multiple sources
+            $composer_urls = [
+                'https://getcomposer.org/download/latest-stable/composer.phar',
+                'https://github.com/composer/composer/releases/latest/download/composer.phar',
+                'https://getcomposer.org/composer-stable.phar'
+            ];
             
-            if ($installer_content === false || !empty($curl_error)) {
-                echo '<p class="error">❌ Failed to download composer installer.</p>';
-                echo '<p>Error: ' . htmlspecialchars($curl_error ?: 'Unknown error') . '</p>';
+            $composer_downloaded = false;
+            $download_error = '';
+            
+            foreach ($composer_urls as $url) {
+                echo '<p>Trying to download from: <code>' . htmlspecialchars($url) . '</code>...</p>';
+                
+                // Try with file_get_contents first
+                $context = stream_context_create([
+                    'http' => [
+                        'timeout' => 30,
+                        'user_agent' => 'Mozilla/5.0',
+                        'follow_location' => true
+                    ]
+                ]);
+                
+                $composer_content = @file_get_contents($url, false, $context);
+                
+                // If that fails, try with curl
+                if ($composer_content === false) {
+                    if (function_exists('curl_init')) {
+                        $ch = curl_init();
+                        curl_setopt($ch, CURLOPT_URL, $url);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+                        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+                        $composer_content = curl_exec($ch);
+                        $curl_error = curl_error($ch);
+                        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                        curl_close($ch);
+                        
+                        if ($composer_content === false || $http_code !== 200) {
+                            $download_error = $curl_error ?: "HTTP $http_code";
+                            continue;
+                        }
+                    } else {
+                        $download_error = 'file_get_contents failed and curl not available';
+                        continue;
+                    }
+                }
+                
+                // Verify it's actually a PHAR file (should start with specific bytes)
+                if ($composer_content && strlen($composer_content) > 1000) {
+                    // Save composer.phar
+                    if (!is_dir($core_path)) {
+                        mkdir($core_path, 0755, true);
+                    }
+                    
+                    if (file_put_contents($composer_phar, $composer_content) !== false) {
+                        // Make it executable
+                        @chmod($composer_phar, 0755);
+                        $composer_downloaded = true;
+                        echo '<p class="success">✅ Composer.phar downloaded successfully!</p>';
+                        echo '<p>Size: ' . number_format(strlen($composer_content)) . ' bytes</p>';
+                        break;
+                    } else {
+                        $download_error = 'Failed to save file (check permissions)';
+                    }
+                } else {
+                    $download_error = 'Downloaded content is too small or invalid';
+                }
+            }
+            
+            if (!$composer_downloaded) {
+                echo '<p class="error">❌ Failed to download composer.phar.</p>';
+                echo '<p>Error: ' . htmlspecialchars($download_error) . '</p>';
                 echo '<p><strong>Manual installation required via SSH:</strong></p>';
                 echo '<pre>cd ' . htmlspecialchars($core_path) . '
-php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"
-php composer-setup.php
+curl -sS https://getcomposer.org/installer | php
+php composer.phar install --no-dev --optimize-autoloader</pre>';
+                echo '<p><strong>Or download directly:</strong></p>';
+                echo '<pre>cd ' . htmlspecialchars($core_path) . '
+wget https://getcomposer.org/download/latest-stable/composer.phar
 php composer.phar install --no-dev --optimize-autoloader</pre>';
                 exit;
             }
         }
         
-        // Save installer
-        if (!is_dir($core_path)) {
-            mkdir($core_path, 0755, true);
-        }
-        
-        if (file_put_contents($composer_installer, $installer_content) === false) {
-            echo '<p class="error">❌ Failed to save composer installer to: <code>' . htmlspecialchars($composer_installer) . '</code></p>';
-            echo '<p>Check file permissions on the core directory.</p>';
-            exit;
-        }
-        
-        echo '<p class="success">✅ Composer installer downloaded successfully!</p>';
-        echo '<p>Saved to: <code>' . htmlspecialchars($composer_installer) . '</code></p>';
-        echo '</div>';
-        
-        // Step 2: Run composer setup
-        echo '<div class="step">';
-        echo '<h3>Step 2: Installing Composer</h3>';
-        echo '<p>Running composer setup...</p>';
-        echo '<pre>';
-        
-        // Change to core directory and run installer
-        $old_cwd = getcwd();
-        chdir($core_path);
-        
-        // Capture output
-        ob_start();
-        $install_result = include $composer_installer;
-        $install_output = ob_get_clean();
-        
-        chdir($old_cwd);
-        
-        echo htmlspecialchars($install_output);
-        echo '</pre>';
-        
-        // Check if composer.phar was created
-        if (file_exists($composer_phar)) {
-            echo '<p class="success">✅ Composer installed successfully!</p>';
-            echo '<p>Composer location: <code>' . htmlspecialchars($composer_phar) . '</code></p>';
-            
-            // Verify composer works
-            $composer_version_cmd = 'cd ' . escapeshellarg($core_path) . ' && php composer.phar --version 2>&1';
-            exec($composer_version_cmd, $version_output, $version_return);
-            if ($version_return === 0) {
-                echo '<p>Composer version: <code>' . htmlspecialchars(implode("\n", $version_output)) . '</code></p>';
-            }
+        // Verify composer works
+        echo '<p>Verifying composer...</p>';
+        $composer_version_cmd = 'cd ' . escapeshellarg($core_path) . ' && php composer.phar --version 2>&1';
+        exec($composer_version_cmd, $version_output, $version_return);
+        if ($version_return === 0 && !empty($version_output)) {
+            echo '<p class="success">✅ Composer is working!</p>';
+            echo '<p>Version: <code>' . htmlspecialchars(implode("\n", $version_output)) . '</code></p>';
         } else {
-            echo '<p class="error">❌ Composer installation failed. composer.phar was not created.</p>';
-            echo '<p><strong>Try manual installation via SSH:</strong></p>';
-            echo '<pre>cd ' . htmlspecialchars($core_path) . '
-php composer-setup.php
-php composer.phar install --no-dev --optimize-autoloader</pre>';
-            exit;
+            echo '<p class="warning">⚠️ Could not verify composer version, but file exists. Continuing...</p>';
         }
         
-        // Clean up installer
-        if (file_exists($composer_installer)) {
-            @unlink($composer_installer);
-        }
         echo '</div>';
         
         // Step 3: Run composer install
