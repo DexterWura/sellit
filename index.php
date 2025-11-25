@@ -88,9 +88,32 @@ if (file_exists(__DIR__.'/core/storage/framework/maintenance.php')) {
 */
 
 $autoload_path = __DIR__.'/core/vendor/autoload.php';
+$vendor_dir = __DIR__.'/core/vendor';
+
+// Check if vendor directory exists
+if (!is_dir($vendor_dir)) {
+    http_response_code(500);
+    $error_msg = "Error: Composer dependencies not installed.\n\n";
+    $error_msg .= "The vendor directory is missing. Please run 'composer install' in the core directory.\n\n";
+    $error_msg .= "To fix this:\n";
+    $error_msg .= "1. Connect to your server via SSH\n";
+    $error_msg .= "2. Navigate to: " . __DIR__ . "/core\n";
+    $error_msg .= "3. Run: composer install --no-dev --optimize-autoloader\n\n";
+    $error_msg .= "If you don't have SSH access, contact your hosting provider.";
+    die($error_msg);
+}
+
+// Check if autoload.php exists
 if (!file_exists($autoload_path)) {
     http_response_code(500);
-    die("Error: Composer dependencies not installed. Please run 'composer install' in the core directory.");
+    $error_msg = "Error: Composer autoload file not found.\n\n";
+    $error_msg .= "The vendor directory exists but autoload.php is missing.\n";
+    $error_msg .= "This usually means composer install didn't complete successfully.\n\n";
+    $error_msg .= "To fix this:\n";
+    $error_msg .= "1. Connect to your server via SSH\n";
+    $error_msg .= "2. Navigate to: " . __DIR__ . "/core\n";
+    $error_msg .= "3. Run: composer install --no-dev --optimize-autoloader\n";
+    die($error_msg);
 }
 
 require $autoload_path;

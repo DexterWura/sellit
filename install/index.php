@@ -200,6 +200,59 @@ MIX_PUSHER_APP_CLUSTER='${PUSHER_APP_CLUSTER}'
 										$status = 'ok';
 										$envpath = dirname(__DIR__, 1) . '/core/.env';
 										file_put_contents($envpath, $envcontent);
+										
+										// Install Composer dependencies
+										$composer_status = 'not_run';
+										$composer_message = '';
+										$core_path = dirname(__DIR__, 1) . '/core';
+										$composer_path = $core_path . '/composer.json';
+										
+										if (file_exists($composer_path)) {
+											// Check if composer is available and try to run composer install
+											$composer_available = false;
+											$composer_cmd = '';
+											$composer_locations = [
+												'composer',
+												'/usr/local/bin/composer',
+												'/usr/bin/composer'
+											];
+											
+											// Try to find composer
+											foreach ($composer_locations as $cmd) {
+												exec($cmd . ' --version 2>&1', $output, $return_var);
+												if ($return_var === 0) {
+													$composer_available = true;
+													$composer_cmd = 'cd ' . escapeshellarg($core_path) . ' && ' . $cmd . ' install --no-dev --optimize-autoloader --no-interaction 2>&1';
+													break;
+												}
+											}
+											
+											// If composer not found in PATH, try composer.phar in core directory
+											if (!$composer_available && file_exists($core_path . '/composer.phar')) {
+												$composer_available = true;
+												$composer_cmd = 'cd ' . escapeshellarg($core_path) . ' && php composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1';
+											}
+											
+											if ($composer_available && !empty($composer_cmd)) {
+												// Set timeout and memory limit
+												@set_time_limit(300); // 5 minutes
+												@ini_set('memory_limit', '512M');
+												
+												exec($composer_cmd, $composer_output, $composer_return);
+												if ($composer_return === 0) {
+													$composer_status = 'success';
+													$composer_message = 'Composer dependencies installed successfully!';
+												} else {
+													$composer_status = 'error';
+													$error_output = array_slice($composer_output, -10);
+													$composer_message = 'Composer install failed. Last output: ' . htmlspecialchars(implode("\n", $error_output));
+												}
+											} else {
+												$composer_status = 'warning';
+												$composer_message = 'Composer not found on server. Please run "composer install" manually in the core directory via SSH.';
+											}
+										}
+										
 										if ($status == 'ok') {
 											if(importDatabase($alldata)){							
 
@@ -216,7 +269,27 @@ MIX_PUSHER_APP_CLUSTER='${PUSHER_APP_CLUSTER}'
 														$stmt = $db->prepare($sql);
 														$stmt->execute();
 														echo '<p class="text-success warning">Email address of admin has been set successfully!</p>';
-																											echo '<div class="warning">
+														
+														// Show composer install status
+														if ($composer_status == 'success') {
+															echo '<p class="text-success warning"><i class="fas fa-check-circle"></i> ' . htmlspecialchars($composer_message) . '</p>';
+														} elseif ($composer_status == 'warning') {
+															echo '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> ' . htmlspecialchars($composer_message) . '</div>';
+															echo '<div class="alert alert-info"><strong>To install manually:</strong><br>';
+															echo '1. Connect to your server via SSH<br>';
+															echo '2. Navigate to: <code>' . htmlspecialchars($core_path) . '</code><br>';
+															echo '3. Run: <code>composer install --no-dev --optimize-autoloader</code></div>';
+														} elseif ($composer_status == 'error') {
+															echo '<div class="alert alert-danger"><i class="fas fa-times-circle"></i> <strong>Composer Error:</strong> ' . htmlspecialchars($composer_message) . '</div>';
+														}
+														
+														// Check if vendor directory exists
+														$vendor_path = $core_path . '/vendor';
+														if (!is_dir($vendor_path)) {
+															echo '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <strong>Warning:</strong> The vendor directory is still missing. The site will not work until composer dependencies are installed.</div>';
+														}
+														
+														echo '<div class="warning">
 													<p class="text-danger lead my-3">Please delete the "install" folder from the server.</p>
 													<p class="text-warning lead my-3">Please change the admin password as soon as possible.</p>
 													</div>';
