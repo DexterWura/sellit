@@ -1,5 +1,61 @@
 <?php
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+
+// Set error handler to log errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $log_file = __DIR__ . '/core/storage/logs/php_errors.log';
+    $log_dir = dirname($log_file);
+    if (!is_dir($log_dir)) {
+        @mkdir($log_dir, 0755, true);
+    }
+    @file_put_contents($log_file, date('Y-m-d H:i:s') . " - Error [$errno]: $errstr in $errfile:$errline\n", FILE_APPEND);
+    return false; // Let PHP handle it normally
+});
+
+// Set exception handler
+set_exception_handler(function($exception) {
+    $log_file = __DIR__ . '/core/storage/logs/php_errors.log';
+    $log_dir = dirname($log_file);
+    if (!is_dir($log_dir)) {
+        @mkdir($log_dir, 0755, true);
+    }
+    $message = date('Y-m-d H:i:s') . " - Exception: " . $exception->getMessage() . " in " . $exception->getFile() . ":" . $exception->getLine() . "\n";
+    $message .= "Stack trace:\n" . $exception->getTraceAsString() . "\n\n";
+    @file_put_contents($log_file, $message, FILE_APPEND);
+    
+    // Show error if debug is enabled
+    if (getenv('APP_DEBUG') === 'true' || (file_exists(__DIR__.'/core/.env') && strpos(file_get_contents(__DIR__.'/core/.env'), 'APP_DEBUG=true') !== false)) {
+        http_response_code(500);
+        echo "<h1>Application Error</h1>";
+        echo "<p><strong>Error:</strong> " . htmlspecialchars($exception->getMessage()) . "</p>";
+        echo "<p><strong>File:</strong> " . htmlspecialchars($exception->getFile()) . "</p>";
+        echo "<p><strong>Line:</strong> " . $exception->getLine() . "</p>";
+        echo "<pre>" . htmlspecialchars($exception->getTraceAsString()) . "</pre>";
+    } else {
+        http_response_code(500);
+        echo "Application Error. Please check logs.";
+    }
+    exit(1);
+});
+
+// Register shutdown function to catch fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== NULL && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
+        $log_file = __DIR__ . '/core/storage/logs/php_errors.log';
+        $log_dir = dirname($log_file);
+        if (!is_dir($log_dir)) {
+            @mkdir($log_dir, 0755, true);
+        }
+        $message = date('Y-m-d H:i:s') . " - Fatal Error: " . $error['message'] . " in " . $error['file'] . ":" . $error['line'] . "\n";
+        @file_put_contents($log_file, $message, FILE_APPEND);
+    }
+});
+
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 
@@ -31,7 +87,13 @@ if (file_exists(__DIR__.'/core/storage/framework/maintenance.php')) {
 |
 */
 
-require __DIR__.'/core/vendor/autoload.php';
+$autoload_path = __DIR__.'/core/vendor/autoload.php';
+if (!file_exists($autoload_path)) {
+    http_response_code(500);
+    die("Error: Composer dependencies not installed. Please run 'composer install' in the core directory.");
+}
+
+require $autoload_path;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,7 +106,13 @@ require __DIR__.'/core/vendor/autoload.php';
 |
 */
 
-$app = require_once __DIR__.'/core/bootstrap/app.php';
+$bootstrap_path = __DIR__.'/core/bootstrap/app.php';
+if (!file_exists($bootstrap_path)) {
+    http_response_code(500);
+    die("Error: Bootstrap file not found at: $bootstrap_path");
+}
+
+$app = require_once $bootstrap_path;
 
 $kernel = $app->make(Kernel::class);
 
