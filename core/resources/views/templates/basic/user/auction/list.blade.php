@@ -10,7 +10,8 @@
                             <table class="table custom--table">
                                 <thead>
                                     <tr>
-                                        <th>@lang('Domain')</th>
+                                        <th>@lang('Listing')</th>
+                                        <th>@lang('Type')</th>
                                         <th>@lang('Price')</th>
                                         <th>@lang('Total Bids')</th>
                                         <th>@lang('End Date')</th>
@@ -21,18 +22,26 @@
                                 <tbody>
                                     @forelse ($domains as $domain)
                                     <tr>
-                                        <td data-label="@lang('Domain')">
+                                        <td data-label="@lang('Listing')">
                                             <div class="table-website">
                                                 <div class="table-website__content">
                                                     <h6 class="title fs--16px">
                                                         <a href="{{ route('domain.detail',['id'=>$domain->id,'name'=>slug($domain->name)]) }}" class="text--base">
-                                                            {{ __($domain->name) }}
+                                                            {{ __($domain->display_name) }}
                                                         </a>
-
-
                                                     </h6>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td data-label="@lang('Type')">
+                                            <span class="badge badge--{{ $domain->listing_type === 'domain' ? 'primary' : ($domain->listing_type === 'website' ? 'success' : 'info') }}">
+                                                {{ __($domain->listing_type_name) }}
+                                            </span>
+                                            @if(!$domain->is_verified)
+                                                <br><small class="text-danger">@lang('Not Verified')</small>
+                                            @else
+                                                <br><small class="text-success">@lang('Verified')</small>
+                                            @endif
                                         </td>
                                         <td data-label="@lang('Price')">
                                             {{ showAmount($domain->price) }} {{ $general->cur_text }}
@@ -73,14 +82,18 @@
                                                     title="@lang('Edit')"></i>
                                             </a>
 
-                                            @if($domain->status == 0 && $domain->verify_code != null)
-                                            <a href="{{ route('user.auction.file.download',$domain->id) }}"
-                                                class="icon-btn btn--dark" data-bs-toggle="tooltip"
-                                                data-bs-position="top" title="@lang('Download')">
-                                                <i class="las la-download"></i>
+                                            @if(!$domain->is_verified)
+                                            <a href="{{ route('user.listing.verify', $domain->id) }}"
+                                                class="icon-btn btn--warning" data-bs-toggle="tooltip"
+                                                data-bs-position="top" title="@lang('Verify')">
+                                                <i class="las la-check-circle"></i>
                                             </a>
-                                            @else
-                                            <a class="icon-btn btn--dark" disabled="disabled">
+                                            @endif
+                                            
+                                            @if($domain->status == 0 && $domain->verify_file != null)
+                                            <a href="{{ route('user.listing.download.file', $domain->id) }}"
+                                                class="icon-btn btn--dark" data-bs-toggle="tooltip"
+                                                data-bs-position="top" title="@lang('Download Verification File')">
                                                 <i class="las la-download"></i>
                                             </a>
                                             @endif

@@ -43,6 +43,15 @@
             "subheading":"text"
         }
     },
+    "listings": {
+        "builder": true,
+        "name": "Listings Section",
+        "content": {
+            "heading": "text",
+            "subheading": "text",
+            "show_count": "text"
+        }
+    },
     "about": {
         "builder": true,
         "name": "About Us",

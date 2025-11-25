@@ -8,86 +8,141 @@ use App\Models\Domain;
 use App\Models\DomainBid;
 use App\Models\GeneralSetting;
 use App\Models\Transaction;
+use App\Enums\ListingType;
 use Illuminate\Http\Request;
 
 class ManageDomainController extends Controller {
 
     public function allDomain(Request $request) {
-        $pageTitle    = 'All Domains';
-        $emptyMessage = 'No domain found';
+        $pageTitle    = 'All Listings';
+        $emptyMessage = 'No listing found';
         $domains      = Domain::query();
 
         if ($request->search) {
-            $domains->where('name', 'LIKE', "%$request->search%");
+            $domains->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%$request->search%")
+                  ->orWhere('website_url', 'LIKE', "%$request->search%")
+                  ->orWhere('social_username', 'LIKE', "%$request->search%");
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains->where('listing_type', $request->listing_type);
         }
 
         $domains = $domains->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains'));
+        $listingTypes = ListingType::all();
+        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function pendingDomain(Request $request) {
-        $pageTitle    = 'All Pending Domains';
-        $emptyMessage = 'No domain found';
+        $pageTitle     = 'All Pending Listings';
+        $emptyMessage = 'No listing found';
         $domains      = Domain::query();
 
         if ($request->search) {
-            $domains->where('name', 'LIKE', "%$request->search%");
+            $domains->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%$request->search%")
+                  ->orWhere('website_url', 'LIKE', "%$request->search%")
+                  ->orWhere('social_username', 'LIKE', "%$request->search%");
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains->where('listing_type', $request->listing_type);
         }
 
         $domains = $domains->where('status', 0)->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains'));
+        $listingTypes = ListingType::all();
+        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function approvedDomain(Request $request) {
-        $pageTitle    = 'All Approved Domains';
-        $emptyMessage = 'No domain found';
+        $pageTitle    = 'All Approved Listings';
+        $emptyMessage = 'No listing found';
         $domains      = Domain::query();
 
         if ($request->search) {
-            $domains->where('name', 'LIKE', "%$request->search%");
+            $domains->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%$request->search%")
+                  ->orWhere('website_url', 'LIKE', "%$request->search%")
+                  ->orWhere('social_username', 'LIKE', "%$request->search%");
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains->where('listing_type', $request->listing_type);
         }
 
         $domains = $domains->active()->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains'));
+        $listingTypes = ListingType::all();
+        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function finishedDomain(Request $request) {
-        $pageTitle    = 'All Finished Domains';
-        $emptyMessage = 'No domain found';
+        $pageTitle     = 'All Finished Listings';
+        $emptyMessage = 'No listing found';
         $domains      = Domain::query();
 
         if ($request->search) {
-            $domains->where('name', 'LIKE', "%$request->search%");
+            $domains->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%$request->search%")
+                  ->orWhere('website_url', 'LIKE', "%$request->search%")
+                  ->orWhere('social_username', 'LIKE', "%$request->search%");
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains->where('listing_type', $request->listing_type);
         }
 
         $domains = $domains->finished()->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains'));
+        $listingTypes = ListingType::all();
+        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function soldDomain(Request $request) {
-        $pageTitle    = 'All Sold Domains';
-        $emptyMessage = 'No domain found';
+        $pageTitle    = 'All Sold Listings';
+        $emptyMessage = 'No listing found';
         $domains      = Domain::query();
 
         if ($request->search) {
-            $domains->where('name', 'LIKE', "%$request->search%");
+            $domains->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%$request->search%")
+                  ->orWhere('website_url', 'LIKE', "%$request->search%")
+                  ->orWhere('social_username', 'LIKE', "%$request->search%");
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains->where('listing_type', $request->listing_type);
         }
 
         $domains = $domains->sold()->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains'));
+        $listingTypes = ListingType::all();
+        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function rejectedDomain(Request $request) {
-        $pageTitle    = 'All Rejected Domains';
-        $emptyMessage = 'No domain found';
+        $pageTitle    = 'All Rejected Listings';
+        $emptyMessage = 'No listing found';
         $domains      = Domain::query();
 
         if ($request->search) {
-            $domains->where('name', 'LIKE', "%$request->search%");
+            $domains->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%$request->search%")
+                  ->orWhere('website_url', 'LIKE', "%$request->search%")
+                  ->orWhere('social_username', 'LIKE', "%$request->search%");
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains->where('listing_type', $request->listing_type);
         }
 
         $domains = $domains->where('status', 9)->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains'));
+        $listingTypes = ListingType::all();
+        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function viewDomain($id) {

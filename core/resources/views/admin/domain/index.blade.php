@@ -9,7 +9,8 @@
                         <thead>
                             <tr>
                                 <th>@lang('S.N.')</th>
-                                <th>@lang('Domain')</th>
+                                <th>@lang('Listing')</th>
+                                <th>@lang('Type')</th>
                                 <th>@lang('Price')</th>
                                 <th>@lang('Total Bids')</th>
                                 <th>@lang('End Date')</th>
@@ -21,10 +22,18 @@
                             @forelse($domains as $domain)
                             <tr>
                                 <td data-label="@lang('S.N.')">{{ $loop->index + $domains->firstItem() }}</td>
-                                <td data-label="@lang('Domain')">
-                                    <span class="name">{{ __($domain->name) }}</span><br>
+                                <td data-label="@lang('Listing')">
+                                    <span class="name">{{ __($domain->display_name) }}</span><br>
                                     <a href="{{ route('admin.users.detail', @$domain->user->id) }}">{{
                                         __(@$domain->user->username) }}</a>
+                                    @if(!$domain->is_verified)
+                                        <br><small class="text-danger">@lang('Not Verified')</small>
+                                    @endif
+                                </td>
+                                <td data-label="@lang('Type')">
+                                    <span class="badge badge--{{ $domain->listing_type === 'domain' ? 'primary' : ($domain->listing_type === 'website' ? 'success' : 'info') }}">
+                                        {{ __($domain->listing_type_name) }}
+                                    </span>
                                 </td>
                                 <td data-label="@lang('Price')">
                                     <div class="user">
@@ -79,7 +88,13 @@
 @push('breadcrumb-plugins')
 <form method="GET" class="form-inline float-sm-right search-form w-sm-auto w-unset bg-white">
     <div class="input-group has_append">
-        <input type="text" name="search" id="mySearch" class="form-control" placeholder="@lang('Domain name')"
+        <select name="listing_type" class="form-control mr-2" style="width: auto;">
+            <option value="">@lang('All Types')</option>
+            @foreach($listingTypes ?? [] as $key => $value)
+                <option value="{{ $key }}" @if(request()->listing_type == $key) selected @endif>{{ __($value) }}</option>
+            @endforeach
+        </select>
+        <input type="text" name="search" id="mySearch" class="form-control" placeholder="@lang('Search listings...')"
             value="{{ request()->search }}">
         <div class="input-group-append">
             <button class="btn btn--primary" type="submit"><i class="fa fa-search"></i></button>

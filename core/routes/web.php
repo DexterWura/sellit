@@ -387,6 +387,15 @@ Route::name('user.')->prefix('user')->group(function () {
             Route::get('auction', 'AuctionController@create')->name('auction.create');
             Route::post('auction/store', 'AuctionController@store')->name('auction.store');
             Route::get('my-auctions', 'AuctionController@list')->name('auction.list');
+            
+            // Listing Verification
+            Route::prefix('listing')->name('listing.')->group(function () {
+                Route::get('verify/{id}', 'ListingVerificationController@show')->name('verify');
+                Route::post('verify/domain/{id}', 'ListingVerificationController@verifyDomain')->name('verify.domain');
+                Route::post('verify/website/{id}', 'ListingVerificationController@verifyWebsite')->name('verify.website');
+                Route::post('verify/social-media/{id}', 'ListingVerificationController@verifySocialMedia')->name('verify.social');
+                Route::get('download-file/{id}', 'ListingVerificationController@downloadFile')->name('download.file');
+            });
             Route::get('auction/file/{id}', 'AuctionController@download')->name('auction.file.download');
             Route::get('auction/edit/{id}', 'AuctionController@edit')->name('auction.edit');
             Route::post('auction/update/{id}', 'AuctionController@update')->name('auction.update');

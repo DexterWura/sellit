@@ -6,9 +6,11 @@ $content = getContent('empty_message.content',true);
     <div class="left">
         <div class="domain">
             <a class="text--base" href="{{ route('domain.detail',['id'=>$domain->id,'name'=>slug($domain->name)]) }}">
-                {{ __($domain->name) }}
+                {{ __($domain->display_name) }}
             </a>
-
+            <small class="badge badge--{{ $domain->listing_type === 'domain' ? 'primary' : ($domain->listing_type === 'website' ? 'success' : 'info') }} ms-2">
+                {{ __($domain->listing_type_name) }}
+            </small>
         </div>
         <div class="traffic">{{ $domain->traffic }}</div>
         <div class="bid">{{ count($domain->bids) }}</div>

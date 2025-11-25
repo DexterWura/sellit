@@ -6,6 +6,8 @@ use App\Models\AdminNotification;
 use App\Models\Category;
 use App\Models\Domain;
 use App\Models\GeneralSetting;
+use App\Enums\ListingType;
+use App\Services\VerificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -38,7 +40,8 @@ class AuctionController extends Controller {
         $pageTitle  = 'Create Auction';
         $countries  = json_decode(file_get_contents(resource_path('views/partials/country.json')));
         $categories = Category::where('status', 1)->get();
-        return view($this->activeTemplate . 'user.auction.create', compact('pageTitle', 'countries', 'categories'));
+        $listingTypes = ListingType::all();
+        return view($this->activeTemplate . 'user.auction.create', compact('pageTitle', 'countries', 'categories', 'listingTypes'));
     }
 
     public function edit($id) {
@@ -52,7 +55,7 @@ class AuctionController extends Controller {
     public function store(Request $request) {
 
         $request->validate([
-            'name'          => 'required',
+            'listing_type'  => 'required|in:domain,website,social_media',
             'category_id'   => 'required|integer',
             'price'         => 'required|numeric|gt:0',
             'register_date' => 'required|date_format:Y-m-d|before:tomorrow',
@@ -60,28 +63,54 @@ class AuctionController extends Controller {
             'location'      => 'required',
             'traffic'       => 'required|integer|gt:0',
             'description'   => 'required',
+            'thumbnail'     => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'images.*'      => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
         $general  = GeneralSetting::first();
         $user     = auth()->user();
 
-        $domainStatus = Domain::active()->where('user_id', $user->id)->where('name', $request->name)->where('status', 1)->exists();
-
-        if ($domainStatus == 1) {
-            $notify[] = ['error', 'Domain already exists'];
-            return back()->withNotify($notify)->withInput();
+        // Validate based on listing type
+        if ($request->listing_type === ListingType::DOMAIN || $request->listing_type === ListingType::WEBSITE) {
+            $request->validate([
+                'name' => 'required|string',
+            ]);
+        } elseif ($request->listing_type === ListingType::SOCIAL_MEDIA) {
+            $request->validate([
+                'social_username' => 'required|string',
+                'social_platform' => 'required|string|in:instagram,facebook,twitter,youtube,tiktok,linkedin',
+            ]);
         }
 
-        $domainName  = $request->name;
-        $findElement = substr($domainName, 0, 4);
+        $domainName = $request->name ?? null;
+        
+        if ($domainName) {
+            $findElement = substr($domainName, 0, 4);
+            if ($findElement == 'www.') {
+                $domainName = str_replace($findElement, '', $domainName);
+            }
+        }
 
-        if ($findElement == 'www.') {
-            $domainName = str_replace($findElement, '', $request->name);
+        // Check for duplicates
+        if ($domainName) {
+            $domainStatus = Domain::active()
+                ->where('user_id', $user->id)
+                ->where('name', $domainName)
+                ->where('listing_type', $request->listing_type)
+                ->where('status', 1)
+                ->exists();
+
+            if ($domainStatus) {
+                $notify[] = ['error', ucfirst($request->listing_type) . ' already exists'];
+                return back()->withNotify($notify)->withInput();
+            }
         }
 
         $endDate = Carbon::parse($request->end_time);
+        $verificationService = new VerificationService();
 
         $domain                = new Domain();
+        $domain->listing_type  = $request->listing_type;
         $domain->name          = $domainName;
         $domain->user_id       = $user->id;
         $domain->category_id   = $request->category_id;
@@ -92,26 +121,83 @@ class AuctionController extends Controller {
         $domain->traffic       = $request->traffic;
         $domain->description   = $request->description;
         $domain->note          = $request->note;
-        $domain->status        = $general->auto_approve ?? 0;
+        
+        // Set listing-specific fields
+        if ($request->listing_type === ListingType::WEBSITE) {
+            $domain->website_url = $request->website_url ?? $domainName;
+        } elseif ($request->listing_type === ListingType::SOCIAL_MEDIA) {
+            $domain->social_username = $request->social_username;
+            $domain->social_platform = $request->social_platform;
+            $domain->name = $request->social_username; // Use username as name for display
+        }
+
+        // Store analytics and links if provided
+        if ($request->has('analytics_data')) {
+            $domain->analytics_data = json_decode($request->analytics_data, true);
+        }
+        if ($request->has('additional_links')) {
+            $domain->additional_links = json_decode($request->additional_links, true);
+        }
+
+        // Handle thumbnail upload
+        if ($request->hasFile('thumbnail')) {
+            try {
+                $path = 'assets/images/listings/thumbnails';
+                $size = '400x300';
+                $domain->thumbnail = uploadImage($request->thumbnail, $path, $size);
+            } catch (\Exception $exp) {
+                $notify[] = ['error', 'Could not upload thumbnail image.'];
+                return back()->withNotify($notify)->withInput();
+            }
+        }
+
+        // Handle multiple images upload
+        if ($request->hasFile('images')) {
+            $images = [];
+            $path = 'assets/images/listings/images';
+            $size = '800x600';
+            
+            foreach ($request->file('images') as $image) {
+                try {
+                    $images[] = uploadImage($image, $path, $size);
+                } catch (\Exception $exp) {
+                    // Continue with other images if one fails
+                }
+            }
+            
+            if (count($images) > 0) {
+                $domain->images = $images;
+            }
+        }
+
+        // Generate verification code
+        $domain->verify_code = $verificationService->generateVerificationCode();
+        
+        // Set status - require verification before approval
+        $domain->status = 0; // Always start as pending until verified
+        $domain->is_verified = false;
         $domain->save();
+
+        $listingTypeName = ListingType::all()[$request->listing_type] ?? 'listing';
+        $displayName = $domain->display_name;
 
         $adminNotification            = new AdminNotification();
         $adminNotification->user_id   = $user->id;
-        $adminNotification->title     = $user->username . ' ' . 'posted a domain for sale';
+        $adminNotification->title     = $user->username . ' posted a ' . strtolower($listingTypeName) . ' for sale';
         $adminNotification->click_url = urlPath('admin.domain.all');
         $adminNotification->save();
 
         notify($user, 'AUCTION_CREATE', [
             'user_name'   => $user->username,
-            'domain_name' => $request->name,
+            'domain_name' => $displayName,
             'price'       => $request->price,
             'currency'    => $general->cur_text,
             'end_time'    => showDateTime($endDate),
             'created_at'  => $domain->created_at,
         ]);
 
-        $notify[] = ['success', 'Auction created successfully'];
-        return redirect()->route('user.auction.list')->withNotify($notify);
+        $notify[] = ['success', ucfirst($listingTypeName) . ' auction created successfully. Please verify ownership to proceed.'];
+        return redirect()->route('user.listing.verify', $domain->id)->withNotify($notify);
     }
 
     public function update(Request $request, $id) {

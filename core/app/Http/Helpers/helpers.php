@@ -740,6 +740,16 @@ function imagePath() {
             'size' => '400x400',
         ],
     ];
+    $data['listings'] = [
+        'thumbnails' => [
+            'path' => 'assets/images/listings/thumbnails',
+            'size' => '400x300',
+        ],
+        'images' => [
+            'path' => 'assets/images/listings/images',
+            'size' => '800x600',
+        ],
+    ];
     return $data;
 }
 

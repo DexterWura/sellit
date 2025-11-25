@@ -14,6 +14,7 @@ class Domain extends Model {
     protected $casts = [
         'analytics_data' => 'array',
         'additional_links' => 'array',
+        'images' => 'array',
         'is_verified' => 'boolean',
     ];
 

@@ -10,9 +10,20 @@
                 <div class="list-details-header">
                     <div class="list-details-header__top">
                         <div class="left">
-                            <h3 class="title">{{ __($domain->name) }}</h3>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <h3 class="title mb-0">{{ __($domain->display_name) }}</h3>
+                                <span class="badge badge--{{ $domain->listing_type === 'domain' ? 'primary' : ($domain->listing_type === 'website' ? 'success' : 'info') }}">
+                                    {{ __($domain->listing_type_name) }}
+                                </span>
+                            </div>
                             <p class="fs--14px mt-2">
                                 <span><i class="fas fa-map-marker-alt"></i> {{ __($domain->location) }}</span>
+                                @if($domain->is_website && $domain->website_url)
+                                    <span class="ms-3"><i class="fas fa-link"></i> <a href="http://{{ $domain->website_url }}" target="_blank">{{ $domain->website_url }}</a></span>
+                                @endif
+                                @if($domain->is_social_media)
+                                    <span class="ms-3"><i class="fab fa-{{ $domain->social_platform }}"></i> {{ ucfirst($domain->social_platform) }}: {{ $domain->social_username }}</span>
+                                @endif
                             </p>
                         </div>
                         <div class="right text-center">
@@ -51,9 +62,41 @@
 
                 <div class="list-details-wrapper">
                     <div class="list-details-content-block">
-                        <h5 class="mb-2">@lang('Domain Details')</h5>
+                        <h5 class="mb-2">@lang('Listing Details')</h5>
                         <P> @php echo $domain->description; @endphp </P>
                     </div>
+                    
+                    @if($domain->analytics_data && is_array($domain->analytics_data))
+                    <div class="list-details-content-block">
+                        <h5 class="mb-2">@lang('Analytics & Metrics')</h5>
+                        <div class="row">
+                            @foreach($domain->analytics_data as $key => $value)
+                            <div class="col-md-6 mb-3">
+                                <div class="analytics-item">
+                                    <strong>{{ ucfirst(str_replace('_', ' ', $key)) }}:</strong>
+                                    <span class="ms-2">{{ is_numeric($value) ? number_format($value) : $value }}</span>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($domain->additional_links && is_array($domain->additional_links) && count($domain->additional_links) > 0)
+                    <div class="list-details-content-block">
+                        <h5 class="mb-2">@lang('Additional Links')</h5>
+                        <ul class="list-unstyled">
+                            @foreach($domain->additional_links as $link)
+                            <li class="mb-2">
+                                <a href="{{ $link }}" target="_blank" class="text--base">
+                                    <i class="fas fa-external-link-alt"></i> {{ $link }}
+                                </a>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+
                     @if($domain->note)
                     <div class="list-details-content-block">
                         <h5 class="mb-2">@lang('Seller\'s note')</h5>

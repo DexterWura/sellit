@@ -23,6 +23,21 @@
                         </div>
                     </div>
                     <div class="action-widget">
+                        <h4 class="action-widget__title">@lang('Listing Type')</h4>
+                        <div class="action-widget__body">
+                            <div class="form-check custom--radio mb-2">
+                                <input class="form-check-input listingTypeFilter" type="radio" name="listing_type" id="listing_all" value="" checked>
+                                <label class="form-check-label" for="listing_all">@lang('All Types')</label>
+                            </div>
+                            @foreach($listingTypes ?? [] as $key => $value)
+                            <div class="form-check custom--radio mb-2">
+                                <input class="form-check-input listingTypeFilter" type="radio" name="listing_type" id="listing_{{ $key }}" value="{{ $key }}" @if(request()->listing_type == $key) checked @endif>
+                                <label class="form-check-label" for="listing_{{ $key }}">{{ __($value) }}</label>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="action-widget">
                         <h4 class="action-widget__title">@lang('Domain Extensions')</h4>
                         <div class="action-widget__body">
                             <div class="row">
@@ -195,7 +210,7 @@
             " to {{$general->cur_sym}}" + $(rangeSlider).slider( "values", 1 ) );
         });
 
-        $('.myExtention, .list_short, .searchBtn').on('click', function () {
+        $('.myExtention, .list_short, .searchBtn, .listingTypeFilter').on('click', function () {
             if($('#all-checkbox').is(':checked')){
                 $("input[type='checkbox'][name='extension']").not(this).prop('checked', false);
             }
@@ -209,6 +224,7 @@
         function fetchDomain(){
             let data = {};
             data.sort = $("input[type='radio'][name='list_sort']:checked").val();
+            data.listing_type = $("input[type='radio'][name='listing_type']:checked").val();
             data.min = $('input[name="min_price"]').val();
             data.max = $('input[name="max_price"]').val();
             data.search = $('.mySearch').val();

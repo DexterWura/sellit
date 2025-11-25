@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Domain;
 use App\Models\DomainExtension;
+use App\Enums\ListingType;
 use Illuminate\Http\Request;
 
 class DomainController extends Controller
@@ -13,7 +14,7 @@ class DomainController extends Controller
     }
 
     public function domains() {
-        $pageTitle    = 'All Domains';
+        $pageTitle    = 'All Listings';
         $extensions   = DomainExtension::where('status', 1)->orderBy('id', 'asc')->get();
         $domains      = Domain::active();
 
@@ -23,14 +24,19 @@ class DomainController extends Controller
 
         if(request()->search){
             $pageTitle    = 'Search Results';
-            $domains = $domains->where('name', 'like', '%' . request()->search . '%');
+            $domains = $domains->where(function($q) {
+                $search = request()->search;
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('website_url', 'like', '%' . $search . '%')
+                  ->orWhere('social_username', 'like', '%' . $search . '%');
+            });
         }
 
         $domains = $domains->with('bids')->latest()->paginate(getPaginate());
+        $listingTypes = ListingType::all();
+        $emptyMessage = 'No listing found';
 
-        $emptyMessage = 'No domain found';
-
-        return view($this->activeTemplate . 'domain.domains', compact('pageTitle', 'emptyMessage', 'extensions', 'domains', 'minPrice', 'maxPrice'));
+        return view($this->activeTemplate . 'domain.domains', compact('pageTitle', 'emptyMessage', 'extensions', 'domains', 'minPrice', 'maxPrice', 'listingTypes'));
     }
 
     public function domainDetail($id, $name) {
@@ -63,7 +69,15 @@ class DomainController extends Controller
         $search     = $request->search;
 
         if ($search) {
-            $domains = $domains->where('name', 'like', '%' . $search . '%');
+            $domains = $domains->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('website_url', 'like', '%' . $search . '%')
+                  ->orWhere('social_username', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+            $domains = $domains->where('listing_type', $request->listing_type);
         }
 
         if ($request->extensions) {

@@ -46,7 +46,7 @@ class VerificationService
 
         // File upload verification
         if ($method === 'file') {
-            $websiteUrl = $domain->website_url;
+            $websiteUrl = $domain->website_url ?? $domain->name;
             if (!$websiteUrl) {
                 return false;
             }
@@ -57,7 +57,19 @@ class VerificationService
             }
 
             try {
-                $verifyUrl = rtrim($websiteUrl, '/') . '/' . $domain->verify_file;
+                // Try with .txt extension first
+                $verifyUrl = rtrim($websiteUrl, '/') . '/' . $verifyCode . '.txt';
+                $response = Http::timeout(10)->get($verifyUrl);
+                
+                if ($response->successful()) {
+                    $content = trim($response->body());
+                    if ($content === $verifyCode) {
+                        return true;
+                    }
+                }
+                
+                // Try without extension
+                $verifyUrl = rtrim($websiteUrl, '/') . '/' . $verifyCode;
                 $response = Http::timeout(10)->get($verifyUrl);
                 
                 if ($response->successful()) {
@@ -76,27 +88,20 @@ class VerificationService
 
     /**
      * Verify social media account ownership
-     * Note: This is a placeholder - actual implementation would require API access
      */
     public function verifySocialMedia(Domain $domain, $username, $password, $platform)
     {
-        // In a real implementation, this would:
-        // 1. Use platform-specific APIs to verify credentials
-        // 2. Check account ownership
-        // 3. Verify account is active
-        
-        // For now, we'll do basic validation
-        // In production, you'd want to use OAuth or platform-specific verification
-        
         if (empty($username) || empty($platform)) {
             return false;
         }
 
-        // Store verification attempt (in production, you'd verify via API)
-        // This is a simplified version - actual verification would require
-        // platform-specific APIs (Instagram API, Twitter API, etc.)
-        
-        return true; // Placeholder - implement actual verification
+        try {
+            $socialMediaService = new \App\Services\SocialMediaVerificationService();
+            return $socialMediaService->verify($platform, $username, ['password' => $password]);
+        } catch (\Exception $e) {
+            Log::error('Social media verification error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -133,4 +138,6 @@ class VerificationService
         }
     }
 }
+
+
 
