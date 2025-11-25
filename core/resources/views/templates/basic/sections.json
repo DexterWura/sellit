@@ -1,0 +1,260 @@
+{
+    "banner": {
+        "builder": true,
+        "no_selection":true,
+        "name": "Banner Section",
+        "content": {
+            "images":{
+                "background_image":{
+                    "size":"1920x535"
+                },
+                "banner_image":{
+                    "size":"350x430"
+                }
+            },
+            "heading": "text",
+            "subheading": "text",
+            "button_one": "text",
+            "button_one_url": "text",
+            "button_two": "text",
+            "button_two_url": "text"
+        }
+    },
+    "partner": {
+        "builder": true,
+        "name": "Partner Section",
+        "content": {
+            "heading": "text"
+        },
+        "element": {
+            "images": {
+                "partner_image":{
+                    "size":"170x35"
+                }
+            },
+            "modal": true
+        }
+    },
+    "domain": {
+        "builder": true,
+        "name": "Domains Section",
+        "content": {
+            "heading": "text",
+            "subheading":"text"
+        }
+    },
+    "about": {
+        "builder": true,
+        "name": "About Us",
+        "content": {
+            "images":{
+                "about_image":{
+                    "size":"450x575"
+                }
+            },
+            "heading": "text",
+            "subheading": "text",
+            "description": "textarea",
+            "btn_text": "text",
+            "btn_url": "text"
+        }
+    },
+    "why_choose_us": {
+        "builder": true,
+        "name": "Why Choose Us",
+        "content":{
+            "heading": "text"
+        },
+        "element": {
+            "title": "text",
+            "subtitle": "text",
+            "icon":"icon",
+            "modal": true
+        }
+    },
+    "testimonial": {
+        "builder": true,
+        "name": "Testimonial Section",
+        "element": {
+            "images":{
+                "user_image":{
+                    "size":"120x140"
+                }
+            },
+            "description": "textarea",
+            "modal": true
+        }
+    },
+    "faq": {
+        "builder": true,
+        "name": "FAQ Section",
+        "content": {
+            "heading": "text"
+        },
+        "element": {
+            "question": "text",
+            "answer": "textarea",
+            "modal": false
+        }
+    },
+    "blog": {
+        "builder": true,
+        "name": "Blog Section",
+        "content": {
+            "heading": "text"
+        },
+        "element": {
+            "images":{
+                "blog_image":{
+                    "size":"860x570",
+                    "thumb":"344x228"
+                }
+            },
+            "title": "text",
+            "description_nic": "textarea-nic",
+            "modal": false
+        }
+    },
+    "subscribe": {
+        "builder": true,
+        "no_selection":true,
+        "name": "Subscribe Section",
+        "content": {
+            "images":{
+                "background_image":{
+                    "size":"1920x370"
+                }
+            },
+            "heading": "text",
+            "subheading": "text"
+        }
+    },
+    "footer": {
+        "builder": true,
+        "no_selection":true,
+        "name": "Footer Section",
+        "content": {
+            "images":{
+                "footer_image":{
+                    "size":"400x330"
+                }
+            },
+            "total_user":"text",
+            "total_domain":"text"
+        }
+    },
+    "policy_pages": {
+        "builder": true,
+        "no_selection":true,
+        "name": "Policy Pages",
+        "element": {
+            "title": "text",
+            "details": "textarea-nic",
+            "modal": false
+        }
+    },
+    "social_icon": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Social Icons",
+        "element": {
+            "title": "text",
+            "social_icon": "icon",
+            "url": "text",
+            "modal": true
+        }
+    },
+    "contact_us": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Contact Us",
+        "content": {
+            "title": "text",
+            "subtitle":"text",
+            "form_heading":"text",
+            "form_subheading":"text",
+            "latitude": "text",
+            "longitude": "text"
+        },
+        "element":{
+            "icon":"icon",
+            "title":"text",
+            "detail":"text",
+            "modal":true
+        }
+    },
+    "login": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Login Page",
+        "content": {
+            "images":{
+                "background_image":{
+                    "size":"1360x910"
+                }
+            },
+            "title": "text",
+            "subtitle":"text"
+        }
+    },
+    "registration": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Registration Page",
+        "content": {
+            "images":{
+                "background_image":{
+                    "size":"1360x910"
+                }
+            },
+            "title": "text",
+            "subtitle":"text"
+        }
+    },
+    "breadcrumb": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Breadcrumb Section",
+        "content": {
+            "images":{
+                "background_image":{
+                    "size":"1920x360"
+                }
+            }
+        }
+    },
+    "how_to_buy_domain": {
+        "builder": true,
+        "no_selection": true,
+        "name": "How to Buy Domain",
+        "element":{
+            "title":"text",
+            "details":"textarea",
+            "modal":true
+        }
+    },
+    "contact_seller": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Contact Seller Page",
+
+        "element":{
+            "title":"text",
+            "details":"textarea",
+            "icon":"icon",
+            "modal":true
+        }
+    },
+    "empty_message": {
+        "builder": true,
+        "no_selection": true,
+        "name": "Empty Message",
+        "content":{
+            "images":{
+                "image":{
+                    "size":"400x330"
+                }
+            }
+        }
+    }
+}
