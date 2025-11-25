@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Domain extends Model {
     use HasFactory;
+    protected $table = 'domain_posts';
     protected $guarded = [];
 
     protected $casts = [
@@ -17,6 +18,43 @@ class Domain extends Model {
         'images' => 'array',
         'is_verified' => 'boolean',
     ];
+
+    // Accessor methods with error handling
+    public function getListingTypeNameAttribute()
+    {
+        try {
+            if (!isset($this->listing_type) || empty($this->listing_type)) {
+                return 'Domain';
+            }
+            $typeValue = $this->listing_type;
+            $types = ListingType::all();
+            return $types[$typeValue] ?? 'Domain';
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('ListingTypeName error', [
+                'domain_id' => $this->id ?? null,
+                'listing_type' => $this->listing_type ?? null,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return 'Domain';
+        }
+    }
+
+    public function getDisplayNameAttribute()
+    {
+        try {
+            if ($this->isSocialMedia()) {
+                return ($this->social_username ?? '') . ' (' . ucfirst($this->social_platform ?? '') . ')';
+            }
+            return $this->name ?? 'Untitled';
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('DisplayName error', [
+                'domain_id' => $this->id ?? null,
+                'message' => $e->getMessage()
+            ]);
+            return $this->name ?? 'Untitled';
+        }
+    }
 
     public function category() {
         return $this->belongsTo(Category::class, 'category_id');
@@ -51,31 +89,60 @@ class Domain extends Model {
     }
 
     public function scopeByListingType($query, $type) {
-        return $query->where('listing_type', $type);
+        try {
+            return $query->where('listing_type', $type);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('scopeByListingType error', [
+                'type' => $type,
+                'message' => $e->getMessage()
+            ]);
+            return $query;
+        }
     }
 
     public function isDomain() {
-        return $this->listing_type === ListingType::DOMAIN;
+        try {
+            if (!isset($this->listing_type) || empty($this->listing_type)) {
+                return true; // Default to domain for backward compatibility
+            }
+            return $this->listing_type === ListingType::DOMAIN;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('isDomain error', [
+                'domain_id' => $this->id ?? null,
+                'message' => $e->getMessage()
+            ]);
+            return true; // Default to domain for backward compatibility
+        }
     }
 
     public function isWebsite() {
-        return $this->listing_type === ListingType::WEBSITE;
+        try {
+            if (!isset($this->listing_type)) {
+                return false;
+            }
+            return $this->listing_type === ListingType::WEBSITE;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('isWebsite error', [
+                'domain_id' => $this->id ?? null,
+                'message' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 
     public function isSocialMedia() {
-        return $this->listing_type === ListingType::SOCIAL_MEDIA;
-    }
-
-    public function getListingTypeNameAttribute() {
-        $types = ListingType::all();
-        return $types[$this->listing_type] ?? 'Unknown';
-    }
-
-    public function getDisplayNameAttribute() {
-        if ($this->isSocialMedia()) {
-            return $this->social_username . ' (' . ucfirst($this->social_platform) . ')';
+        try {
+            if (!isset($this->listing_type)) {
+                return false;
+            }
+            return $this->listing_type === ListingType::SOCIAL_MEDIA;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('isSocialMedia error', [
+                'domain_id' => $this->id ?? null,
+                'message' => $e->getMessage()
+            ]);
+            return false;
         }
-        return $this->name;
     }
 
     public function getStatusTextAttribute() {

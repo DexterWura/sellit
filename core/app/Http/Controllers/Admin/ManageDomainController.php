@@ -14,25 +14,42 @@ use Illuminate\Http\Request;
 class ManageDomainController extends Controller {
 
     public function allDomain(Request $request) {
-        $pageTitle    = 'All Listings';
-        $emptyMessage = 'No listing found';
-        $domains      = Domain::query();
+        try {
+            $pageTitle    = 'All Listings';
+            $emptyMessage = 'No listing found';
+            $domains      = Domain::query();
 
-        if ($request->search) {
-            $domains->where(function($q) use ($request) {
-                $q->where('name', 'LIKE', "%$request->search%")
-                  ->orWhere('website_url', 'LIKE', "%$request->search%")
-                  ->orWhere('social_username', 'LIKE', "%$request->search%");
-            });
+            if ($request->search) {
+                $domains->where(function($q) use ($request) {
+                    $q->where('name', 'LIKE', "%$request->search%");
+                    // Check if columns exist before using them
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'website_url')) {
+                        $q->orWhere('website_url', 'LIKE', "%$request->search%");
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'social_username')) {
+                        $q->orWhere('social_username', 'LIKE', "%$request->search%");
+                    }
+                });
+            }
+
+            if ($request->listing_type && ListingType::isValid($request->listing_type)) {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'listing_type')) {
+                    $domains->where('listing_type', $request->listing_type);
+                }
+            }
+
+            $domains = $domains->with('user')->withCount('bids')->latest()->paginate(getPaginate());
+            $listingTypes = ListingType::all();
+            return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('allDomain error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        if ($request->listing_type && ListingType::isValid($request->listing_type)) {
-            $domains->where('listing_type', $request->listing_type);
-        }
-
-        $domains = $domains->with('user')->withCount('bids')->latest()->paginate(getPaginate());
-        $listingTypes = ListingType::all();
-        return view('admin.domain.index', compact('pageTitle', 'emptyMessage', 'domains', 'listingTypes'));
     }
 
     public function pendingDomain(Request $request) {

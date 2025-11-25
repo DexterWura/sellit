@@ -799,24 +799,33 @@ function sendGeneralEmail($email, $subject, $message, $receiver_name = '') {
 }
 
 function getContent($data_keys, $singleQuery = false, $limit = null, $orderById = false) {
-
-    if ($singleQuery) {
-        $content = Frontend::where('data_keys', $data_keys)->orderBy('id', 'desc')->first();
-    } else {
-        $article = Frontend::query();
-        $article->when($limit != null, function ($q) use ($limit) {
-            return $q->limit($limit);
-        });
-
-        if ($orderById) {
-            $content = $article->where('data_keys', $data_keys)->orderBy('id')->get();
+    try {
+        if ($singleQuery) {
+            $content = Frontend::where('data_keys', $data_keys)->orderBy('id', 'desc')->first();
         } else {
-            $content = $article->where('data_keys', $data_keys)->orderBy('id', 'desc')->get();
+            $article = Frontend::query();
+            $article->when($limit != null, function ($q) use ($limit) {
+                return $q->limit($limit);
+            });
+
+            if ($orderById) {
+                $content = $article->where('data_keys', $data_keys)->orderBy('id')->get();
+            } else {
+                $content = $article->where('data_keys', $data_keys)->orderBy('id', 'desc')->get();
+            }
+
         }
 
+        return $content;
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('getContent error', [
+            'data_keys' => $data_keys,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
+        return $singleQuery ? null : collect([]);
     }
-
-    return $content;
 }
 
 function gatewayRedirectUrl($type = false) {

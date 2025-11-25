@@ -1,20 +1,38 @@
 @php
 use App\Models\Domain;
 use App\Enums\ListingType;
+use Illuminate\Support\Facades\Log;
 
-$listingsSection = getContent('listings.content', true);
-$showCount = isset($listingsSection->data_values->show_count) && !empty($listingsSection->data_values->show_count) 
-    ? (int)$listingsSection->data_values->show_count 
-    : 12;
+try {
+    $listingsSection = getContent('listings.content', true);
+    $showCount = isset($listingsSection->data_values->show_count) && !empty($listingsSection->data_values->show_count) 
+        ? (int)$listingsSection->data_values->show_count 
+        : 12;
 
-// Get featured listings
-$featuredListings = Domain::active()
-    ->where('is_verified', true)
-    ->with('category', 'user')
-    ->withCount('bids')
-    ->latest()
-    ->take($showCount)
-    ->get();
+    // Get featured listings
+    $featuredListings = Domain::active();
+    
+    // Only filter by is_verified if column exists
+    if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'is_verified')) {
+        $featuredListings = $featuredListings->where('is_verified', true);
+    }
+    
+    $featuredListings = $featuredListings
+        ->with('category', 'user')
+        ->withCount('bids')
+        ->latest()
+        ->take($showCount)
+        ->get();
+} catch (\Exception $e) {
+    Log::error('Listings section error', [
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTraceAsString()
+    ]);
+    $featuredListings = collect([]);
+    $listingsSection = (object)['data_values' => (object)['heading' => 'Online Businesses For Sale', 'subheading' => 'Browse verified online businesses']];
+}
 @endphp
 
 <section class="listings-section pt-100 pb-100 section--bg">

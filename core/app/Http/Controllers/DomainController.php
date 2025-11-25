@@ -14,29 +14,44 @@ class DomainController extends Controller
     }
 
     public function domains() {
-        $pageTitle    = 'All Listings';
-        $extensions   = DomainExtension::where('status', 1)->orderBy('id', 'asc')->get();
-        $domains      = Domain::active();
+        try {
+            $pageTitle    = 'All Listings';
+            $extensions   = DomainExtension::where('status', 1)->orderBy('id', 'asc')->get();
+            $domains      = Domain::active();
 
-        $cloneDomains = clone $domains;
-        $minPrice     = $cloneDomains->min('price') ?? 0;
-        $maxPrice     = $cloneDomains->max('price') ?? 0;
+            $cloneDomains = clone $domains;
+            $minPrice     = $cloneDomains->min('price') ?? 0;
+            $maxPrice     = $cloneDomains->max('price') ?? 0;
 
-        if(request()->search){
-            $pageTitle    = 'Search Results';
-            $domains = $domains->where(function($q) {
+            if(request()->search){
+                $pageTitle    = 'Search Results';
                 $search = request()->search;
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('website_url', 'like', '%' . $search . '%')
-                  ->orWhere('social_username', 'like', '%' . $search . '%');
-            });
+                $domains = $domains->where(function($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%');
+                    // Only add these if columns exist
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'website_url')) {
+                        $q->orWhere('website_url', 'like', '%' . $search . '%');
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'social_username')) {
+                        $q->orWhere('social_username', 'like', '%' . $search . '%');
+                    }
+                });
+            }
+
+            $domains = $domains->with('bids')->latest()->paginate(getPaginate());
+            $listingTypes = ListingType::all();
+            $emptyMessage = 'No listing found';
+
+            return view($this->activeTemplate . 'domain.domains', compact('pageTitle', 'emptyMessage', 'extensions', 'domains', 'minPrice', 'maxPrice', 'listingTypes'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Domains page error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        $domains = $domains->with('bids')->latest()->paginate(getPaginate());
-        $listingTypes = ListingType::all();
-        $emptyMessage = 'No listing found';
-
-        return view($this->activeTemplate . 'domain.domains', compact('pageTitle', 'emptyMessage', 'extensions', 'domains', 'minPrice', 'maxPrice', 'listingTypes'));
     }
 
     public function domainDetail($id, $name) {
@@ -70,14 +85,21 @@ class DomainController extends Controller
 
         if ($search) {
             $domains = $domains->where(function($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('website_url', 'like', '%' . $search . '%')
-                  ->orWhere('social_username', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%' . $search . '%');
+                // Only add these if columns exist
+                if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'website_url')) {
+                    $q->orWhere('website_url', 'like', '%' . $search . '%');
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'social_username')) {
+                    $q->orWhere('social_username', 'like', '%' . $search . '%');
+                }
             });
         }
 
         if ($request->listing_type && ListingType::isValid($request->listing_type)) {
-            $domains = $domains->where('listing_type', $request->listing_type);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('domain_posts', 'listing_type')) {
+                $domains = $domains->where('listing_type', $request->listing_type);
+            }
         }
 
         if ($request->extensions) {

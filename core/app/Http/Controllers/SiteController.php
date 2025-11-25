@@ -21,16 +21,31 @@ class SiteController extends Controller {
     }
 
     public function index() {
+        try {
+            $reference = @$_GET['reference'];
 
-        $reference = @$_GET['reference'];
+            if ($reference) {
+                session()->put('reference', $reference);
+            }
 
-        if ($reference) {
-            session()->put('reference', $reference);
+            $pageTitle = 'Home';
+            $sections  = Page::where('tempname', $this->activeTemplate)->where('slug', 'home')->first();
+            
+            \Illuminate\Support\Facades\Log::info('Home page accessed', [
+                'template' => $this->activeTemplate,
+                'sections' => $sections ? 'found' : 'not found'
+            ]);
+            
+            return view($this->activeTemplate . 'home', compact('pageTitle', 'sections'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Home page error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        $pageTitle = 'Home';
-        $sections  = Page::where('tempname', $this->activeTemplate)->where('slug', 'home')->first();
-        return view($this->activeTemplate . 'home', compact('pageTitle', 'sections'));
     }
 
     public function pages($slug) {
