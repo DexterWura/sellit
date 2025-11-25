@@ -90,29 +90,61 @@ if (file_exists(__DIR__.'/core/storage/framework/maintenance.php')) {
 $autoload_path = __DIR__.'/core/vendor/autoload.php';
 $vendor_dir = __DIR__.'/core/vendor';
 
-// Check if vendor directory exists
+// Detailed check with helpful error messages
 if (!is_dir($vendor_dir)) {
     http_response_code(500);
-    $error_msg = "Error: Composer dependencies not installed.\n\n";
-    $error_msg .= "The vendor directory is missing. Please run 'composer install' in the core directory.\n\n";
-    $error_msg .= "To fix this:\n";
-    $error_msg .= "1. Connect to your server via SSH\n";
-    $error_msg .= "2. Navigate to: " . __DIR__ . "/core\n";
-    $error_msg .= "3. Run: composer install --no-dev --optimize-autoloader\n\n";
-    $error_msg .= "If you don't have SSH access, contact your hosting provider.";
+    $error_msg = "<!DOCTYPE html><html><head><title>Error</title><style>body{font-family:Arial;padding:20px;background:#f5f5f5;}";
+    $error_msg .= ".container{max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:8px;border-left:4px solid #dc3545;}";
+    $error_msg .= "code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body><div class='container'>";
+    $error_msg .= "<h1 style='color:#dc3545;'>❌ Composer Dependencies Not Installed</h1>";
+    $error_msg .= "<p><strong>The vendor directory is missing.</strong></p>";
+    $error_msg .= "<p>Path checked: <code>" . htmlspecialchars($vendor_dir) . "</code></p>";
+    $error_msg .= "<h3>To fix this:</h3><ol>";
+    $error_msg .= "<li>Connect to your server via SSH</li>";
+    $error_msg .= "<li>Navigate to: <code>" . htmlspecialchars(__DIR__ . "/core") . "</code></li>";
+    $error_msg .= "<li>Run: <code>composer install --no-dev --optimize-autoloader</code></li>";
+    $error_msg .= "</ol><p><a href='check-vendor.php' style='color:#007bff;'>Run diagnostic check</a></p></div></body></html>";
     die($error_msg);
 }
 
 // Check if autoload.php exists
 if (!file_exists($autoload_path)) {
     http_response_code(500);
-    $error_msg = "Error: Composer autoload file not found.\n\n";
-    $error_msg .= "The vendor directory exists but autoload.php is missing.\n";
-    $error_msg .= "This usually means composer install didn't complete successfully.\n\n";
-    $error_msg .= "To fix this:\n";
-    $error_msg .= "1. Connect to your server via SSH\n";
-    $error_msg .= "2. Navigate to: " . __DIR__ . "/core\n";
-    $error_msg .= "3. Run: composer install --no-dev --optimize-autoloader\n";
+    $error_msg = "<!DOCTYPE html><html><head><title>Error</title><style>body{font-family:Arial;padding:20px;background:#f5f5f5;}";
+    $error_msg .= ".container{max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:8px;border-left:4px solid #ffc107;}";
+    $error_msg .= "code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body><div class='container'>";
+    $error_msg .= "<h1 style='color:#ffc107;'>⚠️ Autoload File Missing</h1>";
+    $error_msg .= "<p><strong>The vendor directory exists but autoload.php is missing.</strong></p>";
+    $error_msg .= "<p>This usually means composer install didn't complete successfully or the vendor directory is incomplete.</p>";
+    $error_msg .= "<p>Vendor directory: <code>" . htmlspecialchars($vendor_dir) . "</code></p>";
+    $error_msg .= "<p>Autoload path: <code>" . htmlspecialchars($autoload_path) . "</code></p>";
+    
+    // Check if vendor directory has any contents
+    $vendor_contents = @scandir($vendor_dir);
+    $item_count = $vendor_contents ? count($vendor_contents) - 2 : 0;
+    $error_msg .= "<p>Items in vendor directory: <strong>" . $item_count . "</strong> " . ($item_count < 10 ? "(incomplete - should be 100+)" : "") . "</p>";
+    
+    $error_msg .= "<h3>To fix this:</h3><ol>";
+    $error_msg .= "<li>Delete the vendor directory: <code>rm -rf " . htmlspecialchars($vendor_dir) . "</code></li>";
+    $error_msg .= "<li>Navigate to: <code>" . htmlspecialchars(__DIR__ . "/core") . "</code></li>";
+    $error_msg .= "<li>Run: <code>composer install --no-dev --optimize-autoloader</code></li>";
+    $error_msg .= "</ol><p><a href='check-vendor.php' style='color:#007bff;'>Run detailed diagnostic</a></p></div></body></html>";
+    die($error_msg);
+}
+
+// Check if autoload.php is readable
+if (!is_readable($autoload_path)) {
+    http_response_code(500);
+    $error_msg = "<!DOCTYPE html><html><head><title>Error</title><style>body{font-family:Arial;padding:20px;background:#f5f5f5;}";
+    $error_msg .= ".container{max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:8px;border-left:4px solid #dc3545;}";
+    $error_msg .= "code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body><div class='container'>";
+    $error_msg .= "<h1 style='color:#dc3545;'>❌ Permission Error</h1>";
+    $error_msg .= "<p><strong>The autoload.php file exists but is not readable.</strong></p>";
+    $error_msg .= "<p>This is a file permissions issue.</p>";
+    $error_msg .= "<h3>To fix this:</h3><ol>";
+    $error_msg .= "<li>Run: <code>chmod -R 755 " . htmlspecialchars($vendor_dir) . "</code></li>";
+    $error_msg .= "<li>Or: <code>chmod 644 " . htmlspecialchars($autoload_path) . "</code></li>";
+    $error_msg .= "</ol></div></body></html>";
     die($error_msg);
 }
 

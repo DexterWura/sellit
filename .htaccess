@@ -15,7 +15,7 @@
     RewriteRule ^ %1 [L,R=301]
 
     # Allow diagnostic files to bypass Laravel
-    RewriteCond %{REQUEST_URI} ^/(diagnostic-root|test-simple|test-php|error-check|minimal|standalone-test|check)\.php$ [NC]
+    RewriteCond %{REQUEST_URI} ^/(diagnostic-root|test-simple|test-php|error-check|minimal|standalone-test|check|check-vendor)\.php$ [NC]
     RewriteRule ^ - [L]
     
     # Allow info.txt to be served directly
