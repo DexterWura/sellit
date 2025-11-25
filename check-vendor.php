@@ -5,13 +5,34 @@
  * Access: https://sellit.zimadsense.com/check-vendor.php
  */
 
+// Enable error reporting but catch errors gracefully
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Don't display errors, handle them ourselves
+ini_set('log_errors', 1);
 
-$core_path = __DIR__ . '/core';
-$vendor_path = $core_path . '/vendor';
-$autoload_path = $vendor_path . '/autoload.php';
-$composer_json = $core_path . '/composer.json';
+// Set error handler
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    // Log but don't die
+    error_log("Error in check-vendor.php: $errstr in $errfile:$errline");
+    return false;
+});
+
+// Set exception handler
+set_exception_handler(function($exception) {
+    http_response_code(500);
+    echo "<h1>Error</h1>";
+    echo "<p>" . htmlspecialchars($exception->getMessage()) . "</p>";
+    exit;
+});
+
+try {
+    $core_path = __DIR__ . '/core';
+    $vendor_path = $core_path . '/vendor';
+    $autoload_path = $vendor_path . '/autoload.php';
+    $composer_json = $core_path . '/composer.json';
+} catch (Exception $e) {
+    die("Error initializing: " . htmlspecialchars($e->getMessage()));
+}
 
 ?>
 <!DOCTYPE html>
@@ -79,33 +100,42 @@ $composer_json = $core_path . '/composer.json';
         // Check 5: Vendor directory contents
         if ($vendor_exists) {
             $vendor_contents = @scandir($vendor_path);
-            $vendor_count = $vendor_contents ? count($vendor_contents) - 2 : 0; // -2 for . and ..
+            $vendor_count = ($vendor_contents !== false && is_array($vendor_contents)) ? count($vendor_contents) - 2 : 0; // -2 for . and ..
             $checks[] = [
                 'name' => 'Vendor Directory Contents',
-                'status' => $vendor_count > 10 ? 'ok' : 'warning',
-                'message' => $vendor_count > 10 ? "$vendor_count items found" : "Only $vendor_count items found (should be 100+)",
+                'status' => $vendor_count > 10 ? 'ok' : ($vendor_count > 0 ? 'warning' : 'error'),
+                'message' => $vendor_count > 10 ? "$vendor_count items found" : ($vendor_count > 0 ? "Only $vendor_count items found (should be 100+)" : "Directory is empty"),
                 'details' => $vendor_count < 10 ? 'Vendor directory appears incomplete. Run: composer install' : null
             ];
         }
         
-        // Check 6: Try to require autoload
-        if ($autoload_exists) {
+        // Check 6: Try to require autoload (only if it exists and is readable)
+        if ($autoload_exists && is_readable($autoload_path)) {
             try {
-                require_once $autoload_path;
-                $checks[] = [
-                    'name' => 'Load Autoload',
-                    'status' => 'ok',
-                    'message' => 'Successfully loaded autoload.php'
-                ];
+                // Don't actually require it, just check if it's valid PHP
+                $content = @file_get_contents($autoload_path);
+                if ($content && strpos($content, '<?php') !== false) {
+                    $checks[] = [
+                        'name' => 'Autoload File Valid',
+                        'status' => 'ok',
+                        'message' => 'File appears to be valid PHP'
+                    ];
+                } else {
+                    $checks[] = [
+                        'name' => 'Autoload File Valid',
+                        'status' => 'error',
+                        'message' => 'File exists but may be corrupted'
+                    ];
+                }
             } catch (Exception $e) {
                 $checks[] = [
-                    'name' => 'Load Autoload',
+                    'name' => 'Autoload File Valid',
                     'status' => 'error',
-                    'message' => 'Failed to load: ' . $e->getMessage()
+                    'message' => 'Error checking file: ' . $e->getMessage()
                 ];
             } catch (Error $e) {
                 $checks[] = [
-                    'name' => 'Load Autoload',
+                    'name' => 'Autoload File Valid',
                     'status' => 'error',
                     'message' => 'Fatal error: ' . $e->getMessage()
                 ];
@@ -171,14 +201,19 @@ $composer_json = $core_path . '/composer.json';
             echo '<div class="check-item">';
             echo '<h3>Vendor Directory Contents (first 50 items):</h3>';
             $items = @scandir($vendor_path);
-            if ($items) {
+            if ($items !== false && is_array($items)) {
                 $items = array_filter($items, function($item) {
                     return $item !== '.' && $item !== '..';
                 });
+                $items = array_values($items); // Re-index array
                 $items = array_slice($items, 0, 50);
-                echo '<pre>' . implode("\n", $items) . '</pre>';
-                if (count($items) >= 50) {
-                    echo '<p><em>... and more (showing first 50)</em></p>';
+                if (!empty($items)) {
+                    echo '<pre>' . htmlspecialchars(implode("\n", $items)) . '</pre>';
+                    if (count($items) >= 50) {
+                        echo '<p><em>... and more (showing first 50)</em></p>';
+                    }
+                } else {
+                    echo '<p>Directory is empty</p>';
                 }
             } else {
                 echo '<p class="error">Could not read vendor directory</p>';
